@@ -1,7 +1,9 @@
-from databases import Database
-import sqlalchemy
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import declarative_base
+from typing import AsyncGenerator
 from dotenv import load_dotenv
+
 import os
 
 load_dotenv()
@@ -11,20 +13,14 @@ class DBConnectionHandler:
         
         self.__connection_string = os.getenv("DATABASE_URL")
 
-        self.__database = Database(self.__connection_string)
+        self.engine = create_async_engine(self.__connection_string, echo=True)
+
+        self.session = sessionmaker(self.engine, class_=AsyncSession, expire_on_commit=False)
 
         self.base = declarative_base()
 
-    async def connect_to_db(self):
-        await self.__database.connect()
-
-    async def disconnect_to_db(self):
-        await self.__database.disconnect()
-
-    def get_db_conn(self):
-        return self.__database
-    
-    def engine(self):
-        return sqlalchemy.create_engine(self.__connection_string)
+    async def get_session(self) -> AsyncGenerator[AsyncSession, None]:
+        async with self.session() as session:
+            yield session
 
 db_connection_handler = DBConnectionHandler()

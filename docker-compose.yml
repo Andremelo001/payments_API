@@ -2,7 +2,7 @@ services:
   # Banco de dados PostgreSQL
   db:
     image: postgres:15
-    container_name: db_postgres
+    container_name: db_postgres_microservice
     restart: always
     env_file:
       - .env
