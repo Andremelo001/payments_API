@@ -7,13 +7,12 @@ class GeneratePaymentUseCase(InterfaceGeneratePaymentUseCase):
     def __init__(self, repository: InterfacePaymentRepository):
         self.__repository = repository
     
-    async def payment(self, amount: float, desc: str, email: str, cpf: str) -> Dict:
+    async def payment(self, amount: float, desc: str, email: str) -> Dict:
 
         pix = qr_code.create_payment_pix(
             amount,
             desc,
             email,
-            cpf,
         )
 
         status = pix["status"]

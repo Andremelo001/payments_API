@@ -4,4 +4,4 @@ from typing import Dict
 class InterfaceGeneratePaymentUseCase(ABC):
 
     @abstractmethod
-    async def payment(self, amount: float, desc: str, email: str, cpf: str) -> Dict: pass
+    async def payment(self, amount: float, desc: str, email: str) -> Dict: pass

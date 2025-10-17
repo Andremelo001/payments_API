@@ -10,11 +10,11 @@ load_dotenv()
 class qrCode(qrCodeInterface):
     def __init__(self):
 
-        self.__acces_token = os.getenv("ACCESS_TOKEN")
+        self.__acces_token = os.getenv("MERCADOPAGO_ACCESS_TOKEN")
 
         self.__sdk = mercadopago.SDK(self.__acces_token)
     
-    def create_payment_pix(self, amount: float, desc: str, email: str, cpf: str) -> Dict:
+    def create_payment_pix(self, amount: float, desc: str, email: str) -> Dict:
 
         payment_data = {
             "transaction_amount": amount,
@@ -22,10 +22,6 @@ class qrCode(qrCodeInterface):
             "payment_method_id": 'pix',
             "payer": {
                 "email": email,
-                "identification": {
-                    "type": "CPF",
-                    "number": cpf
-                },
             }
         }
 
@@ -33,6 +29,12 @@ class qrCode(qrCodeInterface):
 
         payment = result["response"]
 
-        return payment
+        return {
+            "status": payment["status"],
+            "qr_code": payment["point_of_interaction"]["transaction_data"]["qr_code"],
+            "qr_code_base64": payment["point_of_interaction"]["transaction_data"]["qr_code_base64"],
+            "ticket_url": payment["point_of_interaction"]["transaction_data"]["ticket_url"]
+        }
+
 
 qr_code = qrCode()

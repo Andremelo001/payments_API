@@ -12,9 +12,8 @@ class GeneratePaymentController(ControllerInterface):
         amount = http_request.body["amount"]
         desc = http_request.body["desc"]
         email = http_request.body["email"]
-        cpf = http_request.body["cpf"]
 
-        response = await self.__use_case.payment(amount, desc, email, cpf)
+        response = await self.__use_case.payment(amount, desc, email)
 
         return HttpResponse(
             status_code=200,
