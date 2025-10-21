@@ -35,6 +35,3 @@ class qrCode(qrCodeInterface):
             "qr_code_base64": payment["point_of_interaction"]["transaction_data"]["qr_code_base64"],
             "ticket_url": payment["point_of_interaction"]["transaction_data"]["ticket_url"]
         }
-
-
-qr_code = qrCode()

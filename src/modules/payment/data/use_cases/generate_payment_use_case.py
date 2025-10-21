@@ -1,15 +1,16 @@
 from src.modules.payment.domain.use_cases_interfaces.interface_generate_payment_use_case import InterfaceGeneratePaymentUseCase
 from src.modules.payment.data.interfaces.interface_payment_repository import InterfacePaymentRepository
-from src.drivers.qrCode.generate_qrCode.qrCode import qr_code
+from src.drivers.qrCode.interfaces.qrCode_interface import qrCodeInterface
 from typing import Dict
 
 class GeneratePaymentUseCase(InterfaceGeneratePaymentUseCase):
-    def __init__(self, repository: InterfacePaymentRepository):
+    def __init__(self, repository: InterfacePaymentRepository, qr_code: qrCodeInterface):
         self.__repository = repository
+        self.__qr_code = qr_code
     
     async def payment(self, amount: float, desc: str, email: str) -> Dict:
 
-        pix = qr_code.create_payment_pix(
+        pix = self.__qr_code.create_payment_pix(
             amount,
             desc,
             email,
