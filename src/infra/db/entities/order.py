@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Date
+from sqlalchemy import Column, String, Date
 from src.infra.db.settings.db_connection_handler import db_connection_handler
 
 class Order(db_connection_handler.base):
