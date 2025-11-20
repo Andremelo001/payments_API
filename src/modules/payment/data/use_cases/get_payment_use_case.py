@@ -13,7 +13,10 @@ class GetPaymentUseCase(InterfaceGetPaymentUseCase):
 
         return self.__format_response(payment)
 
-    def __format_response(self, payment: OrderModel) -> Dict:
+    def __format_response(self, payment: OrderModel) -> Dict | None:
+
+        if payment is None:
+            return None
 
         return {
             "id": str(payment.id),
