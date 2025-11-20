@@ -8,8 +8,10 @@ load_dotenv()
 
 class NotifyApi(NotifyApiInterface):
     def __init__(self):
-        # URL pública da API principal
-        self.__api_main_url = os.getenv("API_MAIN_URL")
+        self.__api_main_url = (
+            os.getenv("API_MAIN_URL_PRODUCTION") or 
+            os.getenv("API_MAIN_URL_DEVELOPMENT")
+        )
     
     async def notify_main_api(self, schedule_id: str, status: str) -> bool:
         async with httpx.AsyncClient(timeout=30.0) as client:
