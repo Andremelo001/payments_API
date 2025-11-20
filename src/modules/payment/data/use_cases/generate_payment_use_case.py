@@ -8,20 +8,21 @@ class GeneratePaymentUseCase(InterfaceGeneratePaymentUseCase):
         self.__repository = repository
         self.__qr_code = qr_code
     
-    async def payment(self, amount: float, desc: str, email: str) -> Dict:
+    async def payment(self, amount: float, desc: str, email: str, schedule_id: str) -> Dict:
 
         pix = self.__qr_code.create_payment_pix(
             amount,
             desc,
             email,
+            schedule_id
         )
 
         status = pix["status"]
 
-        await self.save_in_db(status)
+        await self.save_in_db(status, schedule_id)
 
         return pix
 
-    async def save_in_db(self, status: str) -> None:
+    async def save_in_db(self, status: str, schedule_id: str) -> None:
 
-        await self.__repository.generate_payment(status)
+        await self.__repository.generate_payment(status, schedule_id)
