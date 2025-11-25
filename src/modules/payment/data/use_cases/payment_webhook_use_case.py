@@ -12,7 +12,14 @@ class PaymentWebhookUseCase(InterPaymentHebhookUseCase):
     
     async def process_webhook(self, payment_id: str) -> Dict:
 
-        payment_info = self.__qr_driver.get_payment_info(payment_id)
+        payment_info = await self.__qr_driver.get_payment_info(payment_id)
+
+        if not payment_info:
+            return {
+                "status": "error",
+                "message": "Pagamento não encontrado no Mercado Pago",
+                "main_api_notified": False
+            }
         
         status = payment_info.get("status")
         

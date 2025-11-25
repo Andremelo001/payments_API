@@ -2,6 +2,7 @@ import mercadopago
 from dotenv import load_dotenv
 import os
 from typing import Dict, Optional
+import httpx
 
 from src.drivers.qrCode.interfaces.qrCode_interface import qrCodeInterface
 
@@ -11,6 +12,8 @@ class qrCode(qrCodeInterface):
     def __init__(self):
 
         self.__acces_token = os.getenv("MERCADOPAGO_ACCESS_TOKEN")
+
+        self.__base_url = "https://api.mercadopago.com/v1/payments"
 
         self.__sdk = mercadopago.SDK(self.__acces_token)
     
@@ -37,24 +40,42 @@ class qrCode(qrCodeInterface):
             "ticket_url": payment["point_of_interaction"]["transaction_data"]["ticket_url"]
         }
     
-    def get_payment_info(self, payment_id: str) -> Optional[Dict]:
+    async def get_payment_info(self, payment_id: str) -> Optional[Dict]:
         """
-        Consulta o Mercado Pago para buscar o status atual do pagamento.
-        Esse método deve ser chamado pelo Webhook.
+        Consulta o Mercado Pago de forma assíncrona para buscar o status atual do pagamento.
+        Esse método é utilizado pelo Webhook.
         """
 
-        result = self.__sdk.payment().get(payment_id)
-        response = result.get("response")
-
-        if not response:
-            return None
-
-        return {
-            "id": response.get("id"),
-            "status": response.get("status"),
-            "status_detail": response.get("status_detail"),
-            "external_reference": response.get("external_reference"),
-            "payment_type_id": response.get("payment_type_id"),
-            "transaction_amount": response.get("transaction_amount"),
-            "date_approved": response.get("date_approved"),
+        url = f"{self.__base_url}/{payment_id}"
+        headers = {
+            "Authorization": f"Bearer {self.__acces_token}",
+            "Content-Type": "application/json"
         }
+
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            try:
+                response = await client.get(url, headers=headers)
+
+                if response.status_code == 404:
+                    return None
+
+                response.raise_for_status()
+                data = response.json()
+
+                return {
+                    "id": data.get("id"),
+                    "status": data.get("status"),
+                    "status_detail": data.get("status_detail"),
+                    "external_reference": data.get("external_reference"),
+                    "payment_type_id": data.get("payment_type_id"),
+                    "transaction_amount": data.get("transaction_amount"),
+                    "date_approved": data.get("date_approved"),
+                }
+
+            except httpx.HTTPStatusError as e:
+                print(f"Erro Mercado Pago: {e.response.text}")
+                return None
+
+            except Exception as e:
+                print(f"Erro inesperado ao consultar pagamento: {e}")
+                return None
