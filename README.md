@@ -94,6 +94,7 @@ src/
 - ✅ Geração de pagamentos PIX
 - ✅ Criação de QR Codes para pagamento
 - ✅ Integração com Mercado Pago
+- ✅ Comunicação com o mercado pago por meio Webhooks para atualização de status de pagamento
 - ✅ Persistência de status de pagamentos
 - ✅ API RESTful com FastAPI
 - ✅ Suporte a operações assíncronas
@@ -120,6 +121,8 @@ DATABASE_URL_DOCKER=postgresql://usuario:senha@db:5432/db_petshop
 
 # Mercado Pago
 MERCADO_PAGO_ACCESS_TOKEN=seu_token_mercado_pago
+
+API_MAIN_URL_DEVELOPMENT="http://schedule_pet_shop_app:8000"
 ```
 
 ### Usando Docker (Recomendado)
