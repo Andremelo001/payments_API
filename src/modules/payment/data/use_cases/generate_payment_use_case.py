@@ -10,6 +10,8 @@ class GeneratePaymentUseCase(InterfaceGeneratePaymentUseCase):
     
     async def payment(self, amount: float, desc: str, email: str, schedule_id: str) -> Dict:
 
+        await self.__payment_exists(schedule_id)
+
         pix = self.__qr_code.create_payment_pix(
             amount,
             desc,
@@ -22,6 +24,13 @@ class GeneratePaymentUseCase(InterfaceGeneratePaymentUseCase):
         await self.save_in_db(status, schedule_id)
 
         return pix
+    
+    async def __payment_exists(self, schedule_id: str) -> None:
+
+        payment = await self.__repository.get_payment(schedule_id)
+
+        if payment:
+            raise Exception("Pagamento já existe")
 
     async def save_in_db(self, status: str, schedule_id: str) -> None:
 
