@@ -1,7 +1,6 @@
 from typing import Callable
 from fastapi import Request
 import json
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.presentation.http_types.http_request import HttpRequest
 from src.presentation.http_types.http_response import HttpResponse

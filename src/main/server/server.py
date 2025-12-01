@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from src.infra.db.settings.db_metada import init_db
-from src.main.routes import generate_payment_routes, webhook_routes, get_payment_routes
+from src.main.routes import generate_payment_routes, webhook_routes, get_payment_routes, health_routes
 
 # Configurações de inicialização do banco 
 @asynccontextmanager
@@ -18,6 +18,7 @@ app = FastAPI(
 )
 
 # Rotas para Endpoints
+app.include_router(health_routes.router)
 app.include_router(generate_payment_routes.router)
 app.include_router(webhook_routes.router)
 app.include_router(get_payment_routes.router)

@@ -9,5 +9,6 @@ dependencies = [
     "databases[postgresql]>=0.9.0",
     "fastapi[standard]>=0.118.0",
     "mercadopago>=2.3.0",
+    "pika>=1.3.2",
     "sqlalchemy>=2.0.43",
 ]
