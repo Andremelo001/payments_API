@@ -3,8 +3,8 @@ from dotenv import load_dotenv
 import os
 from typing import Dict, Optional
 import httpx
-
 from src.drivers.qrCode.interfaces.qrCode_interface import qrCodeInterface
+from src.errors import MercadoPagoError, MercadoPagoPaymentNotFoundError, QrCodeGenerationError
 
 load_dotenv()
 
@@ -29,16 +29,26 @@ class qrCode(qrCodeInterface):
             }
         }
 
-        result = self.__sdk.payment().create(payment_data)
+        try:
+            result = self.__sdk.payment().create(payment_data)
+
+        except Exception as e:
+            raise MercadoPagoError(f"SDK error: {str(e)}")
 
         payment = result["response"]
 
-        return {
-            "status": payment["status"],
-            "qr_code": payment["point_of_interaction"]["transaction_data"]["qr_code"],
-            "qr_code_base64": payment["point_of_interaction"]["transaction_data"]["qr_code_base64"],
-            "ticket_url": payment["point_of_interaction"]["transaction_data"]["ticket_url"]
-        }
+        try:
+            response_data = {
+                "status": payment["status"],
+                "qr_code": payment["point_of_interaction"]["transaction_data"]["qr_code"],
+                "qr_code_base64": payment["point_of_interaction"]["transaction_data"]["qr_code_base64"],
+                "ticket_url": payment["point_of_interaction"]["transaction_data"]["ticket_url"]
+            }
+            
+            return response_data
+            
+        except KeyError as e:
+            raise QrCodeGenerationError(f"Invalid payment response: missing {str(e)}", schedule_id=schedule_id)
     
     async def get_payment_info(self, payment_id: str) -> Optional[Dict]:
         """
@@ -57,7 +67,7 @@ class qrCode(qrCodeInterface):
                 response = await client.get(url, headers=headers)
 
                 if response.status_code == 404:
-                    return None
+                    raise MercadoPagoPaymentNotFoundError(payment_id)
 
                 response.raise_for_status()
                 data = response.json()
@@ -72,10 +82,11 @@ class qrCode(qrCodeInterface):
                     "date_approved": data.get("date_approved"),
                 }
 
+            except MercadoPagoPaymentNotFoundError:
+                raise
+
             except httpx.HTTPStatusError as e:
-                print(f"Erro Mercado Pago: {e.response.text}")
-                return None
+                raise MercadoPagoError(f"HTTP {e.response.status_code}: {e.response.text}", status_code=e.response.status_code)
 
             except Exception as e:
-                print(f"Erro inesperado ao consultar pagamento: {e}")
-                return None
+                raise MercadoPagoError(f"Unexpected error: {str(e)}")

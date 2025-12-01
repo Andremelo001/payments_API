@@ -4,12 +4,15 @@
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.118+-green.svg)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-blue.svg)
 ![Docker](https://img.shields.io/badge/Docker-Enabled-blue.svg)
+![Status](https://img.shields.io/badge/Status-Em%20Produção-success.svg)
 
 ## 📋 Sobre o Projeto
 
-Este projeto é um **microserviço de pagamentos** desenvolvido com o objetivo principal de **compreender e aplicar os conceitos fundamentais da arquitetura de microserviços**. O serviço é responsável por processar pagamentos via PIX utilizando a integração com o Mercado Pago, gerando QR Codes e persistindo informações de transações.
+Este projeto é um **microserviço de pagamentos** desenvolvido com o objetivo principal de **compreender e aplicar os conceitos fundamentais da arquitetura de microserviços**. O serviço é responsável por processar pagamentos via PIX utilizando a integração com o Mercado Pago, gerando QR Codes, persistindo informações de transações e processando webhooks de notificação de pagamento.
 
-Este microserviço é consumido pela API principal de gerenciamento de pet shops, disponível em: [schedule-pet-shop](https://github.com/Andremelo001/schedule-pet-shop)
+**🚀 Este microserviço está atualmente rodando em produção**, processando pagamentos reais via PIX através da integração com o Mercado Pago.
+
+Este microserviço é consumido pela API principal de gerenciamento de pet shops, disponível em: [schedule-pet-shop](https://github.com/Andremelo001/schedule-pet-shop) **(também em produção)**
 
 ## 🎯 Objetivo Educacional
 
@@ -59,10 +62,12 @@ Microserviços são uma abordagem arquitetural para desenvolvimento de software 
 - **Python 3.13+**
 - **FastAPI** - Framework web moderno e de alta performance
 - **SQLAlchemy** - ORM para interação com banco de dados
-- **PostgreSQL** - Banco de dados relacional
+- **PostgreSQL 15** - Banco de dados relacional
 - **Mercado Pago SDK** - Integração para pagamentos PIX
 - **Docker & Docker Compose** - Containerização e orquestração
 - **Databases** - Suporte assíncrono para PostgreSQL
+- **asyncpg** - Driver assíncrono para PostgreSQL
+- **uv** - Gerenciador de pacotes Python moderno e rápido
 
 ## 📁 Arquitetura do Projeto
 
@@ -80,7 +85,7 @@ src/
 └── presentation/     # Controllers e tipos HTTP
 ```
 
-### Camadas e Responsabilidades
+### Camadas
 
 - **Presentation**: Controllers e adaptadores HTTP
 - **Domain**: Regras de negócio e interfaces de casos de uso
@@ -89,13 +94,16 @@ src/
 - **Drivers**: Integrações com serviços externos (Mercado Pago)
 - **Main**: Composição de dependências e configuração de rotas
 
-## 🔧 Funcionalidades
-
-- ✅ Geração de pagamentos PIX
-- ✅ Criação de QR Codes para pagamento
-- ✅ Integração com Mercado Pago
-- ✅ Comunicação com o mercado pago por meio Webhooks para atualização de status de pagamento
-- ✅ Persistência de status de pagamentos
+### Responsabilidades
+- ✅ Geração de pagamentos PIX via Mercado Pago
+- ✅ Criação de QR Codes para pagamento (texto e base64)
+- ✅ Webhook para notificação de mudança de status
+- ✅ Consulta de status de pagamentos
+- ✅ Notificação para API principal sobre mudanças de status
+- ✅ Persistência de transações em PostgreSQL
+- ✅ API RESTful com FastAPI
+- ✅ Suporte completo a operações assíncronas
+- ✅ Comunicação entre microserviços via rede Docker compartilhadaentos
 - ✅ API RESTful com FastAPI
 - ✅ Suporte a operações assíncronas
 
@@ -132,11 +140,11 @@ API_MAIN_URL_DEVELOPMENT="http://schedule_pet_shop_app:8000"
 git clone https://github.com/Andremelo001/payments_API.git
 cd payments_API
 
+# Crie a rede compartilhada (se ainda não existir)
+docker network create shared_network
+
 # Suba os containers
 docker-compose up -d
-
-# A API estará disponível em http://localhost:8000
-```
 
 ### Instalação Local
 
@@ -145,20 +153,21 @@ docker-compose up -d
 git clone https://github.com/Andremelo001/payments_API.git
 cd payments_API
 
-# Crie e ative um ambiente virtual
-python -m venv .venv
-.venv\Scripts\Activate.ps1  # Windows PowerShell
+# Instale o uv (gerenciador de pacotes)
+pip install uv
 
-# Instale as dependências
-pip install -e .
+# Instale as dependências usando uv
+uv sync
 
 # Execute a aplicação
-fastapi dev src/main/server/server.py
+uv run uvicorn src.main.server.server:app --reload --port 8000
 ```
 
 ## 🔌 API Endpoints
 
-### Gerar Pagamento
+### 1. Gerar Pagamento
+
+```
 
 ```http
 POST /payments/generate_payment
@@ -182,15 +191,73 @@ Content-Type: application/json
 }
 ```
 
+### 2. Buscar Pagamento
+
+```http
+GET /payments/finder_payment?transaction_id=123456789
+```
+
+**Resposta de Sucesso:**
+
+```json
+{
+  "transaction_id": "123456789",
+  "status": "approved",
+  "amount": 100.00,
+  "description": "Pagamento de serviço pet shop"
+}
+```
+
+### 3. Webhook Mercado Pago
+
+```http
+POST /webhook/mercadopago
+Content-Type: application/json
+
+{
+  "action": "payment.updated",
+  "data": {
+    "id": "123456789"
+  }
+}
+```
+
+**Resposta de Sucesso:**
+
+```json
+{
+  "message": "Webhook processed successfully"
+}
+```
+
 ## 🔗 Integração com API Principal
 
 Este microserviço é consumido pela API de gerenciamento de pet shops:
 
 🔗 [schedule-pet-shop](https://github.com/Andremelo001/schedule-pet-shop)
 
-A comunicação ocorre através de requisições HTTP, onde a API principal:
-1. Recebe solicitação de pagamento do cliente
-2. Faz requisição para este microserviço
+### Fluxo de Comunicação
+
+A comunicação ocorre através de requisições HTTP em uma arquitetura de microserviços:
+
+**1. Geração de Pagamento:**
+- API principal recebe solicitação de pagamento do cliente
+- Faz requisição POST para `/payments/generate_payment`
+- Recebe QR Code e dados de pagamento
+- Retorna informações para o cliente finalizar o pagamento
+
+**2. Notificação de Status (Webhook):**
+- Mercado Pago notifica este microserviço via POST em `/webhook/mercadopago`
+- Microserviço atualiza status do pagamento no banco de dados
+- Microserviço notifica a API principal sobre mudança de status
+
+**3. Consulta de Pagamento:**
+- API principal ou cliente podem consultar status via GET em `/payments/finder_payment`
+- Retorna informações atualizadas do pagamento
+
+### Comunicação entre Serviços
+
+Os serviços se comunicam através de uma **rede Docker compartilhada** (`shared_network`), permitindo que os containers se comuniquem de forma isolada e segura. A variável `API_MAIN_URL_DEVELOPMENT` define a URL da API principal para notificações de webhook.
 3. Recebe QR Code e dados de pagamento
 4. Retorna informações para o cliente finalizar o pagamento
 

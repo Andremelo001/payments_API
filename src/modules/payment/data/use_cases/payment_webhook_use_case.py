@@ -1,10 +1,11 @@
 from src.modules.payment.data.interfaces.interface_payment_repository import InterfacePaymentRepository
 from src.drivers.qrCode.interfaces.qrCode_interface import qrCodeInterface
 from src.drivers.notify_api.interfaces.notify_api_interface import NotifyApiInterface
-from src.modules.payment.domain.use_cases_interfaces.interface_payment_webhook_use_case import InterPaymentHebhookUseCase
+from src.modules.payment.domain.use_cases_interfaces.interface_payment_webhook_use_case import InterfacePaymentHebhookUseCase
+from src.errors import MercadoPagoPaymentNotFoundError
 from typing import Dict
 
-class PaymentWebhookUseCase(InterPaymentHebhookUseCase):
+class PaymentWebhookUseCase(InterfacePaymentHebhookUseCase):
     def __init__(self, repository: InterfacePaymentRepository, qr_driver: qrCodeInterface, notify_api: NotifyApiInterface):
         self.__qr_driver = qr_driver
         self.__repository = repository
@@ -15,11 +16,7 @@ class PaymentWebhookUseCase(InterPaymentHebhookUseCase):
         payment_info = await self.__qr_driver.get_payment_info(payment_id)
 
         if not payment_info:
-            return {
-                "status": "error",
-                "message": "Pagamento não encontrado no Mercado Pago",
-                "main_api_notified": False
-            }
+            raise MercadoPagoPaymentNotFoundError(payment_id)
         
         status = payment_info.get("status")
         

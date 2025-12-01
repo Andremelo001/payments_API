@@ -1,8 +1,9 @@
 from dotenv import load_dotenv
 import os
 import httpx
-
 from src.drivers.notify_api.interfaces.notify_api_interface import NotifyApiInterface
+
+from src.errors import NotificationError
 
 load_dotenv()
 
@@ -27,6 +28,11 @@ class NotifyApi(NotifyApiInterface):
                 response.raise_for_status()
                 return True
             
+            except httpx.TimeoutException as e:
+                raise NotificationError(schedule_id, status, "Connection timeout")
+            
+            except httpx.HTTPStatusError as e:
+                raise NotificationError(schedule_id, status, f"HTTP {e.response.status_code}")
+            
             except Exception as e:
-                print(f"Erro ao notificar API principal: {e}")
-                return False
+                raise NotificationError(schedule_id, status, str(e))

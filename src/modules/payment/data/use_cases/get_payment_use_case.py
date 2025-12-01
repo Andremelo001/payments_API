@@ -1,6 +1,7 @@
 from src.modules.payment.domain.use_cases_interfaces.interface_get_payment_use_case import InterfaceGetPaymentUseCase
 from src.modules.payment.data.interfaces.interface_payment_repository import InterfacePaymentRepository
 from src.modules.payment.domain.models.order import OrderModel
+from src.errors import PaymentNotFoundError
 from typing import Dict
 
 class GetPaymentUseCase(InterfaceGetPaymentUseCase):
@@ -10,6 +11,9 @@ class GetPaymentUseCase(InterfaceGetPaymentUseCase):
     async def get_payment(self, schedule_id: str) -> Dict:
 
         payment = await self.__repository.get_payment(schedule_id)
+        
+        if payment is None:
+            raise PaymentNotFoundError(schedule_id, "schedule_id")
 
         return self.__format_response(payment)
 

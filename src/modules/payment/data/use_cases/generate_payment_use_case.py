@@ -1,6 +1,7 @@
 from src.modules.payment.domain.use_cases_interfaces.interface_generate_payment_use_case import InterfaceGeneratePaymentUseCase
 from src.modules.payment.data.interfaces.interface_payment_repository import InterfacePaymentRepository
 from src.drivers.qrCode.interfaces.qrCode_interface import qrCodeInterface
+from src.errors import PaymentAlreadyExistsError, QrCodeGenerationError
 from typing import Dict
 
 class GeneratePaymentUseCase(InterfaceGeneratePaymentUseCase):
@@ -12,12 +13,15 @@ class GeneratePaymentUseCase(InterfaceGeneratePaymentUseCase):
 
         await self.__payment_exists(schedule_id)
 
-        pix = self.__qr_code.create_payment_pix(
-            amount,
-            desc,
-            email,
-            schedule_id
-        )
+        try:
+            pix = self.__qr_code.create_payment_pix(
+                amount,
+                desc,
+                email,
+                schedule_id
+            )
+        except Exception as e:
+            raise QrCodeGenerationError(str(e), schedule_id=schedule_id)
 
         status = pix["status"]
 
@@ -30,7 +34,7 @@ class GeneratePaymentUseCase(InterfaceGeneratePaymentUseCase):
         payment = await self.__repository.get_payment(schedule_id)
 
         if payment:
-            raise Exception("Pagamento já existe")
+            raise PaymentAlreadyExistsError(schedule_id)
 
     async def save_in_db(self, status: str, schedule_id: str) -> None:
 

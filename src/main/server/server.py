@@ -10,7 +10,12 @@ async def lifespan(app: FastAPI):
     yield
 
 # Inicializa o aplicativo FastAPI
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(
+    lifespan=lifespan,
+    title="Payments API",
+    description="Microserviço de pagamentos via PIX com Mercado Pago",
+    version="1.0.0"
+)
 
 # Rotas para Endpoints
 app.include_router(generate_payment_routes.router)
