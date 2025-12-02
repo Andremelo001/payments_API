@@ -2,12 +2,28 @@ from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from src.infra.db.settings.db_metada import init_db
 from src.main.routes import generate_payment_routes, webhook_routes, get_payment_routes, health_routes
+from src.drivers.messaging.rabbitmq_payment_publisher import RabbitMQPaymentPublisher
 
-# Configurações de inicialização do banco 
+# Lifecycle da aplicação
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Startup
     await init_db()
+    
+    # Inicializa RabbitMQ (singleton)
+    try:
+        RabbitMQPaymentPublisher()
+    except Exception:
+        pass  # Se falhar, vai tentar conectar no primeiro uso
+    
     yield
+    
+    # Shutdown
+    try:
+        publisher = RabbitMQPaymentPublisher()
+        publisher.close()
+    except Exception:
+        pass
 
 # Inicializa o aplicativo FastAPI
 app = FastAPI(

@@ -19,6 +19,4 @@ async def payment_webhook_composer(http_request: HttpRequest):
 
     http_response = await controller.handle(http_request)
 
-    publisher.close()
-
     return http_response

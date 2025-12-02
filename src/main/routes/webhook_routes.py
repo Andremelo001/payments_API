@@ -17,7 +17,7 @@ router = APIRouter(
 
 @router.post("/mercadopago", response_model=Dict)
 async def mercado_pago_webhook(request: Request):
-
+    
     http_response: HttpResponse = await request_adapter(request, payment_webhook_composer)
 
     return JSONResponse(content=http_response.body, status_code=http_response.status_code)

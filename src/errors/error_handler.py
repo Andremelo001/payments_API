@@ -3,7 +3,6 @@ from src.errors.types_errors import (
     PaymentNotFoundError,
     MercadoPagoError,
     MercadoPagoPaymentNotFoundError,
-    NotificationError,
     ValidationError,
     QrCodeGenerationError,
     WebhookValidationError
@@ -99,19 +98,6 @@ def handle_errors(error: Exception) -> HttpResponse:
                 "errors": [{
                     "title": error.name,
                     "detail": error.message,
-                    "schedule_id": error.schedule_id
-                }]
-            }
-        )
-    
-    # Erros de notificação (não devem ser retornados ao cliente, mas logados)
-    if isinstance(error, NotificationError):
-        return HttpResponse(
-            status_code=error.status_code,
-            body={
-                "errors": [{
-                    "title": error.name,
-                    "detail": "Failed to notify external service. Payment status updated locally.",
                     "schedule_id": error.schedule_id
                 }]
             }

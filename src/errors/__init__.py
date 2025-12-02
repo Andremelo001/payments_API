@@ -3,7 +3,6 @@ from .types_errors import (
     PaymentNotFoundError,
     MercadoPagoError,
     MercadoPagoPaymentNotFoundError,
-    NotificationError,
     ValidationError,
     QrCodeGenerationError,
     WebhookValidationError
@@ -15,7 +14,6 @@ __all__ = [
     'PaymentNotFoundError',
     'MercadoPagoError',
     'MercadoPagoPaymentNotFoundError',
-    'NotificationError',
     'ValidationError',
     'QrCodeGenerationError',
     'WebhookValidationError',

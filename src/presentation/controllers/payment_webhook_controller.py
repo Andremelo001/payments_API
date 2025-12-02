@@ -17,8 +17,16 @@ class PaymentWebhookController(ControllerInterface):
             
             if not payment_id:
                 raise WebhookValidationError("Missing payment_id in webhook data")
-
-            response = await self.__use_case.process_webhook(payment_id)
+            
+            # Extrai headers e delega validação para o use case
+            x_signature = http_request.headers.get("x-signature", "")
+            x_request_id = http_request.headers.get("x-request-id", "")
+            
+            response = await self.__use_case.process_webhook(
+                payment_id=payment_id,
+                x_signature=x_signature,
+                x_request_id=x_request_id
+            )
 
             return HttpResponse(
                 status_code=200,

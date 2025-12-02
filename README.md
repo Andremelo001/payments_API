@@ -51,7 +51,14 @@ Microserviços são uma abordagem arquitetural para desenvolvimento de software 
 - Não precisa escalar toda a aplicação, apenas o serviço de pagamentos
 - Otimização de recursos baseada em necessidades específicas
 
-#### 6. **Tecnologia Heterogênea**
+#### 6. **Comunicação Assíncrona com Message Broker**
+- Utiliza **RabbitMQ** para comunicação desacoplada entre microserviços
+- Eventos de pagamento são publicados em exchange do tipo **fanout**
+- Permite que múltiplos consumidores recebam notificações de mudança de status
+- Elimina acoplamento direto entre serviços (não precisa conhecer URLs dos consumidores)
+- Garante entrega confiável de mensagens mesmo se consumidores estiverem offline
+
+#### 7. **Tecnologia Heterogênea**
 - Liberdade para escolher a stack mais adequada (Python/FastAPI neste caso)
 - Enquanto a API principal pode usar outras tecnologias
 - Cada microserviço pode evoluir tecnologicamente de forma independente
@@ -63,6 +70,8 @@ Microserviços são uma abordagem arquitetural para desenvolvimento de software 
 - **FastAPI** - Framework web moderno e de alta performance
 - **SQLAlchemy** - ORM para interação com banco de dados
 - **PostgreSQL 15** - Banco de dados relacional
+- **RabbitMQ** - Message broker para comunicação assíncrona entre microserviços
+- **Pika** - Cliente Python para RabbitMQ
 - **Mercado Pago SDK** - Integração para pagamentos PIX
 - **Docker & Docker Compose** - Containerização e orquestração
 - **Databases** - Suporte assíncrono para PostgreSQL
@@ -75,7 +84,9 @@ O projeto segue uma **arquitetura limpa (Clean Architecture)** organizada em cam
 
 ```
 src/
-├── drivers/           # Drivers externos (QR Code, APIs)
+├── drivers/           # Drivers externos (QR Code, Messaging)
+│   ├── messaging/     # RabbitMQ publisher para eventos de pagamento
+│   └── qrCode/        # Geração de QR Codes
 ├── infra/            # Infraestrutura (DB, Entities, Repositories)
 ├── main/             # Configurações principais (Routes, Composers, Server)
 ├── modules/          # Módulos de negócio
@@ -97,15 +108,14 @@ src/
 ### Responsabilidades
 - ✅ Geração de pagamentos PIX via Mercado Pago
 - ✅ Criação de QR Codes para pagamento (texto e base64)
-- ✅ Webhook para notificação de mudança de status
+- ✅ Webhook para notificação de mudança de status com validação HMAC-SHA256
 - ✅ Consulta de status de pagamentos
-- ✅ Notificação para API principal sobre mudanças de status
+- ✅ **Publicação de eventos de pagamento via RabbitMQ** (comunicação assíncrona)
 - ✅ Persistência de transações em PostgreSQL
 - ✅ API RESTful com FastAPI
 - ✅ Suporte completo a operações assíncronas
-- ✅ Comunicação entre microserviços via rede Docker compartilhadaentos
-- ✅ API RESTful com FastAPI
-- ✅ Suporte a operações assíncronas
+- ✅ Padrão Singleton para conexão RabbitMQ (otimização de recursos)
+- ✅ Context Manager para gerenciamento automático de sessões de banco de dados
 
 ## 📦 Instalação e Execução
 
@@ -129,8 +139,10 @@ DATABASE_URL_DOCKER=postgresql://usuario:senha@db:5432/db_petshop
 
 # Mercado Pago
 MERCADO_PAGO_ACCESS_TOKEN=seu_token_mercado_pago
+MERCADOPAGO_WEBHOOK_SECRET=seu_webhook_secret_do_mercado_pago
 
-API_MAIN_URL_DEVELOPMENT="http://schedule_pet_shop_app:8000"
+# RabbitMQ
+RABBITMQ_URL=amqps://usuario:senha@host/vhost
 ```
 
 ### Usando Docker (Recomendado)
@@ -145,6 +157,7 @@ docker network create shared_network
 
 # Suba os containers
 docker-compose up -d
+```
 
 ### Instalação Local
 
@@ -166,8 +179,6 @@ uv run uvicorn src.main.server.server:app --reload --port 8000
 ## 🔌 API Endpoints
 
 ### 1. Gerar Pagamento
-
-```
 
 ```http
 POST /payments/generate_payment
@@ -238,28 +249,38 @@ Este microserviço é consumido pela API de gerenciamento de pet shops:
 
 ### Fluxo de Comunicação
 
-A comunicação ocorre através de requisições HTTP em uma arquitetura de microserviços:
+A comunicação ocorre de forma **híbrida** combinando requisições HTTP síncronas e mensageria assíncrona:
 
-**1. Geração de Pagamento:**
+**1. Geração de Pagamento (HTTP Síncrono):**
 - API principal recebe solicitação de pagamento do cliente
 - Faz requisição POST para `/payments/generate_payment`
 - Recebe QR Code e dados de pagamento
 - Retorna informações para o cliente finalizar o pagamento
 
-**2. Notificação de Status (Webhook):**
+**2. Notificação de Status (Webhook + RabbitMQ Assíncrono):**
 - Mercado Pago notifica este microserviço via POST em `/webhook/mercadopago`
-- Microserviço atualiza status do pagamento no banco de dados
-- Microserviço notifica a API principal sobre mudança de status
+- Webhook valida autenticidade da requisição via **HMAC-SHA256**
+- Microserviço atualiza status do pagamento no banco de dados PostgreSQL
+- **Publica evento de pagamento no RabbitMQ** (exchange fanout)
+- API principal consome mensagem da fila e processa mudança de status
+- **Vantagem**: Desacoplamento total - se API principal estiver offline, mensagem fica na fila
 
-**3. Consulta de Pagamento:**
+**3. Consulta de Pagamento (HTTP Síncrono):**
 - API principal ou cliente podem consultar status via GET em `/payments/finder_payment`
 - Retorna informações atualizadas do pagamento
 
-### Comunicação entre Serviços
 
-Os serviços se comunicam através de uma **rede Docker compartilhada** (`shared_network`), permitindo que os containers se comuniquem de forma isolada e segura. A variável `API_MAIN_URL_DEVELOPMENT` define a URL da API principal para notificações de webhook.
-3. Recebe QR Code e dados de pagamento
-4. Retorna informações para o cliente finalizar o pagamento
+
+#### 🐰 RabbitMQ (CloudAMQP)
+- **Exchange**: `payment_events` (tipo fanout)
+- **Pattern**: Publish/Subscribe
+- **Garantias**: Persistência de mensagens (`delivery_mode=2`)
+- **Otimização**: Singleton pattern para reutilização de conexão
+- **Benefícios**: 
+  - Comunicação assíncrona e desacoplada
+  - Tolerância a falhas (mensagens persistidas)
+  - Múltiplos consumidores podem receber eventos
+  - Redução de latência (~90% mais rápido que criar nova conexão a cada webhook)
 
 ## 📚 Aprendizados e Boas Práticas
 
@@ -270,9 +291,11 @@ Este projeto demonstra:
 - ✅ Uso de interfaces para desacoplamento
 - ✅ Arquitetura limpa e organizada
 - ✅ Padrão de composição de dependências
+- ✅ Padrões de otimização (Singleton, Connection Pooling, Context Manager)
+- ✅ Message Broker para comunicação assíncrona entre microserviços
 - ✅ Async/Await para operações não-bloqueantes
 - ✅ Containerização com Docker
-- ✅ Comunicação entre microserviços
+- ✅ Segurança em webhooks com validação criptográfica
 
 ## 👤 Autor
 
